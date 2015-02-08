@@ -14,6 +14,8 @@
 //Blinds project for Jim Cogswell, http://www.jimcogswell.com/
 
 ////////////////////////////////////////////
+
+
 //VARIABLE DECLARATIONS
 //All pin variables should be const
 
