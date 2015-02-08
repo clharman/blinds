@@ -18,9 +18,9 @@ void directionWrite(int pot_raw, int lim_next_index,
   int relay_dir_pin, int relay_delay, int coast_down);
 
 //R  \
-//M  Motor speed
-//E  Calculates & sets motor speed from input signal
-void speedWrite(int motor_pin, int signal_in);
+//M  \
+//E  Calculates & returns motor speed
+int speedWrite(int signal_in);
 
 //R  \
 //M  \

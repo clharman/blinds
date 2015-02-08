@@ -52,11 +52,10 @@ void directionWrite(int pot_raw, int lim_next_index,
 }
 
 //R  \
-//M  Motor speed
-//E  Calculates & sets motor speed from input signal
-void speedWrite(int motor_pin, int signal_in){
-  int smoothedVal = signal_in * 0.25; // divide the smoothed values by 4 so that they fit within a suitable output range for the motor
-  analogWrite(motor_pin,smoothedVal); //set the motor to go at this speed
+//M  \
+//E  Calculates & returns motor speed
+int speedWrite(int signal_in){
+  return signal_in * 0.25; //gain
 }
 
 //R  \
