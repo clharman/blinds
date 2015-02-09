@@ -1,5 +1,4 @@
 #include "source.h"
-#include "Arduino.h"
 
 //R  \
 //M  \
@@ -14,32 +13,34 @@ int micThreshed(int mic_raw, int noise_thresh, int noise_loud,
   }
 }
 
-//changes motor direction
+//R  \
+//M  power relay status, direction relay status
+//E  reverses direction of motor when called
 void switchDirection(bool motor_dir, int relay_pwr_pin, 
   int relay_dir_pin, int relay_delay, int coast_down){
-  if(motor_dir==true){ //if pot reads that its reached the edge and the motor is moving clockwise
+  if(motor_dir==true){                //If motor direction is cw, go ccw
     digitalWrite(relay_pwr_pin, LOW); //turn off power
-    delay(coast_down + relay_delay); //wait for it to slow down
-    digitalWrite(relay_dir_pin,LOW); //change direction
-    delay(relay_delay);
+    delay(coast_down + relay_delay);  //wait for system to stop
+    digitalWrite(relay_dir_pin,LOW);  //change direction
+    delay(relay_delay);               //allow relay actuation
     digitalWrite(relay_pwr_pin,HIGH); //turn on motor
     motor_dir = false; //the direction is now anti-clockwise
   }
-  else if(motor_dir==false){ //if the pot reaches far left, and motor direction is counterclockwise
+  else if(motor_dir==false){          //If motor direction is ccw, go cw
     digitalWrite(relay_pwr_pin, LOW); //turn off power
-    delay(coast_down + relay_delay); // wait for it to slow down
+    delay(coast_down + relay_delay);  //wait for system to stop
     digitalWrite(relay_dir_pin,HIGH); //change direction
-    delay(relay_delay);
+    delay(relay_delay);               //allow relay actuation
     digitalWrite(relay_pwr_pin,HIGH); //turn on motor
     motor_dir = true; //the direction is now clockwise
   }
 }
 
 //R  \
-//M  
-//E   
-//Writes motor direction using following algorithm:
-//NOTE: REQUIRES CORRECT INITIAL CONDITIONS TO FUNCTION.
+//M  power relay status, direction relay status
+//E  reverses motor direction if a limit is reached
+//
+//WARNING: REQUIRES CORRECT INITIAL CONDITIONS TO FUNCTION.
 //IF INITIAL CONDITIONS ARE WRONG MECHANISM WILL NOT STOP
 //AT LIMITS AND MAY DAMAGE ITSELF
 void directionWrite(int pot_raw, int lim_next_index, 

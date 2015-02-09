@@ -74,13 +74,14 @@ void setup()  {
 
 //MAIN
 void loop(){
-  
+
   //READ microphone
   mic_raw = analogRead(mic_pin);
 
   //micThreshed() in call to digitalSmooth gives (0 or mic_raw).  not sure if this will work because of scope of mic_raw etc
   mic_smooth = digitalSmooth(micThreshed(mic_raw, noise_thresh, 
-    noise_loud, motor_spd), mic_signal, mic_signal_size);  // every sensor you use with digitalSmooth needs its own array
+    noise_loud, motor_spd), mic_signal, mic_signal_size);  
+    // *every sensor you use with digitalSmooth needs its own array
 
   //Writes mic_raw, motor_spd, pot_value to serial
   debugSerial(mic_raw, motor_spd, pot_raw);
@@ -91,10 +92,11 @@ void loop(){
   //WRITE throttle
   analogWrite(motor_pin,motor_spd);
 
-  pot_raw = analogRead(pot_pin); //read the value for the potentiometer
+  //READ the potentiometer
+  pot_raw = analogRead(pot_pin);
 
-  //Abstraction to determine direction based on whatever
+  //Change motor direction if appropriate
   directionWrite(pot_raw, lim_next_index, 
-  limit_cycle, motor_dir, relay_pwr_pin, 
-  relay_dir_pin, relay_delay, coast_down);
+    limit_cycle, motor_dir, relay_pwr_pin, 
+    relay_dir_pin, relay_delay, coast_down);
 }
