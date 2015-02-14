@@ -46,9 +46,13 @@ void switchDirection(bool motor_dir, int relay_pwr_pin,
 void directionWrite(int pot_raw, int lim_next_index, 
   int limit_cycle[], bool motor_dir, int relay_pwr_pin, 
   int relay_dir_pin, int relay_delay, int coast_down){
+  static int next_dir = 1;
   if(potCompare(pot_raw, lim_next_index, limit_cycle)){
       switchDirection(motor_dir, relay_pwr_pin, relay_dir_pin, 
                         relay_delay, coast_down);
+      if(lim_next_index == 0 && lim_next_index == 5)
+        next_dir = next_dir * -1;
+      lim_next_index = lim_next_index + next_dir;
   }  
 }
 
