@@ -16,7 +16,7 @@ int micThreshed(int mic_raw, int noise_thresh, int noise_loud,
 //R  \
 //M  power relay status, direction relay status
 //E  reverses direction of motor when called
-void switchDirection(bool motor_dir, int relay_pwr_pin, 
+void switchDirection(bool &motor_dir, int relay_pwr_pin, 
   int relay_dir_pin, int relay_delay, int coast_down){
   if(motor_dir==false){                //If motor direction is cw, go ccw
     digitalWrite(relay_pwr_pin, LOW); //turn off power
@@ -44,23 +44,9 @@ void switchDirection(bool motor_dir, int relay_pwr_pin,
 //IF INITIAL CONDITIONS ARE WRONG MECHANISM WILL NOT STOP
 //AT LIMITS AND MAY DAMAGE ITSELF
 void directionWrite(int pot_raw, int &lim_next_index, 
-  int limit_cycle[], bool motor_dir, int relay_pwr_pin, 
+  int limit_cycle[], bool &motor_dir, int relay_pwr_pin, 
   int relay_dir_pin, int relay_delay, int coast_down, int &next_dir){
-
-  
-      
-      Serial.print("\n switching. next_index:  ");
-      Serial.print(lim_next_index);
-      Serial.print("\n switching. pot_raw:     ");
-      Serial.print(pot_raw);
-      Serial.print("\n switching. next pot:    ");
-      Serial.print(limit_cycle[lim_next_index]);
-      Serial.print("\n next dir     ");
-      Serial.print(next_dir);
-      Serial.print("\n");
-
-  
-  if(potCompare(pot_raw, lim_next_index, limit_cycle, next_dir)){
+  if(potCompare(pot_raw, lim_next_index, limit_cycle)){
     
       switchDirection(motor_dir, relay_pwr_pin, relay_dir_pin, 
                         relay_delay, coast_down);
@@ -87,7 +73,7 @@ int speedWrite(int signal_in){
 //  returns true if:
 //   - index mod 2 = 0 AND pot < limit
 //   - index mod 2 = 1 AND pot > limit
-bool potCompare(int pot_reading, int next_index, int limit_cycle[], int motor_dir){
+bool potCompare(int pot_reading, int next_index, int limit_cycle[]){
   if(next_index % 2 == 0 && pot_reading < limit_cycle [next_index]){
         Serial.print("first switch case \n");
     return true;
@@ -100,34 +86,23 @@ bool potCompare(int pot_reading, int next_index, int limit_cycle[], int motor_di
     return false;
 }
 
-//Outputs debugging information in the serial window in the following format
-void debugSerial(float var_values[]){
-  //for(int i = 0; i < sizeof(var_values); i++){
-    Serial.print(var_values[0]);
+//R  var_names is an array of c-strings containing only & all names of variables held in array of floats var_values
+//M  Serial out
+//E  Prints a line with the name of each variable followed by its value
+void debugSerial(char* var_names[], float var_values[]){
+  for(int i = 0; i < sizeof(var_values); i++){
+    Serial.print(var_names[i]);
     Serial.print("\t");
-  //}
-  Serial.print(var_values[1]);
+    Serial.print(var_values[i]);
     Serial.print("\t");
-    Serial.print(var_values[2]);
-    Serial.print("\t");
-    Serial.print(var_values[3]);
-    Serial.print("\t");
+  }
   Serial.print("\n");
 }
 
-//ALTERNATIVE SMOOTHING FUNCTION
-int smooth(int data, float filterVal, float smoothedVal){
-  if (filterVal > 1){      // check to make sure param's are within range
-    filterVal = .99;
-  }
-  else if (filterVal <= 0){
-    filterVal = 0;
-  }
-  smoothedVal = (data * (1 - filterVal)) + (smoothedVal  *  filterVal);
-  return (int)smoothedVal;
-}
 
-//DIGITAL SMOOTHING FUNCTION
+//R
+//M
+//E
 int digitalSmooth(int rawIn, int *sensSmoothArray, int filter_size){     // "int *sensSmoothArray" passes an array to the function - the asterisk indicates the array name is a pointer
   int j, k, temp, top, bottom;
   long total;
@@ -153,13 +128,6 @@ int digitalSmooth(int rawIn, int *sensSmoothArray, int filter_size){     // "int
       }
     }
   }
-  /*
-  for (j = 0; j < (filter_size); j++){    // print the array to debug
-   Serial.print(sorted[j]); 
-   Serial.print("   "); 
-   }
-   Serial.println();
-   */
   // throw out top and bottom 25% of samples - limit to throw out at least one from top and bottom
   bottom = max(((filter_size * 25)  / 100), 1); 
   top = min((((filter_size * 75) / 100) + 1  ), (filter_size - 1));   // the + 1 is to make up for asymmetry caused by integer rounding
@@ -168,7 +136,6 @@ int digitalSmooth(int rawIn, int *sensSmoothArray, int filter_size){     // "int
   for ( j = bottom; j< top; j++){
     total += sorted[j];  // total remaining indices
     k++; 
- 
   }
   return total / k;    // divide by number of samples
 }

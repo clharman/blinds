@@ -11,14 +11,14 @@ int micThreshed(int mic_raw, int noise_thresh, int noise_loud,
 //R  \
 //M  power relay status, direction relay status
 //E  reverses direction of motor when called
-void switchDirection(bool motor_dir, int relay_pwr_pin, 
+void switchDirection(bool &motor_dir, int relay_pwr_pin, 
   int relay_dir_pin, int relay_delay, int coast_down);
 
 //R  \
 //M  power relay status, direction relay status
 //E  reverses motor direction if a limit is reached
 void directionWrite(int pot_raw, int &lim_next_index, 
-  int limit_cycle[], bool motor_dir, int relay_pwr_pin, 
+  int limit_cycle[], bool &motor_dir, int relay_pwr_pin, 
   int relay_dir_pin, int relay_delay, int coast_down,  int &next_dir);
 
 //R  \
@@ -28,19 +28,18 @@ int speedWrite(int signal_in);
 
 //R  \
 //M  \
-//E  returns true if it is time to reverse direction
+//E  Returns true if it is time to reverse direction
 bool potCompare(int pot_reading, int next_index, 
-	int limit_cycle[], int motor_dir);
+	int limit_cycle[]);
 
-//R  \
+//R  var_names is an array of c-strings containing names of variables held in array of floats var_values
 //M  Serial out
-//E  Writes raw mic, smoothed mic, and pot to serial out
-void debugSerial(float var_values[]);
+//E  Prints a line with the name of each variable followed by its value
+void debugSerial(char* var_names[], float var_values[]);
 
-//idk wtf this doe
-int smooth(int data, float filterVal, float smoothedVal);
-
-//talk about convoluted
+//R
+//M
+//E
 int digitalSmooth(int rawIn, int *sensSmoothArray, 
 	int filter_size);
 
