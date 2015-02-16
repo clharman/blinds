@@ -18,21 +18,21 @@ int micThreshed(int mic_raw, int noise_thresh, int noise_loud,
 //E  reverses direction of motor when called
 void switchDirection(bool motor_dir, int relay_pwr_pin, 
   int relay_dir_pin, int relay_delay, int coast_down){
-  if(motor_dir==true){                //If motor direction is cw, go ccw
+  if(motor_dir==false){                //If motor direction is cw, go ccw
     digitalWrite(relay_pwr_pin, LOW); //turn off power
     delay(coast_down + relay_delay);  //wait for system to stop
     digitalWrite(relay_dir_pin,LOW);  //change direction
     delay(relay_delay);               //allow relay actuation
     digitalWrite(relay_pwr_pin,HIGH); //turn on motor
-    motor_dir = false; //the direction is now anti-clockwise
+    motor_dir = true; //the direction is now anti-clockwise
   }
-  else if(motor_dir==false){          //If motor direction is ccw, go cw
+  else if(motor_dir==true){          //If motor direction is ccw, go cw
     digitalWrite(relay_pwr_pin, LOW); //turn off power
     delay(coast_down + relay_delay);  //wait for system to stop
     digitalWrite(relay_dir_pin,HIGH); //change direction
     delay(relay_delay);               //allow relay actuation
     digitalWrite(relay_pwr_pin,HIGH); //turn on motor
-    motor_dir = true; //the direction is now clockwise
+    motor_dir = false; //the direction is now clockwise
   }
 }
 
@@ -43,15 +43,33 @@ void switchDirection(bool motor_dir, int relay_pwr_pin,
 //WARNING: REQUIRES CORRECT INITIAL CONDITIONS TO FUNCTION.
 //IF INITIAL CONDITIONS ARE WRONG MECHANISM WILL NOT STOP
 //AT LIMITS AND MAY DAMAGE ITSELF
-void directionWrite(int pot_raw, int lim_next_index, 
+void directionWrite(int pot_raw, int &lim_next_index, 
   int limit_cycle[], bool motor_dir, int relay_pwr_pin, 
-  int relay_dir_pin, int relay_delay, int coast_down){
-  static int next_dir = 1;
-  if(potCompare(pot_raw, lim_next_index, limit_cycle)){
+  int relay_dir_pin, int relay_delay, int coast_down, int &next_dir){
+
+  
+      
+      Serial.print("\n switching. next_index:  ");
+      Serial.print(lim_next_index);
+      Serial.print("\n switching. pot_raw:     ");
+      Serial.print(pot_raw);
+      Serial.print("\n switching. next pot:    ");
+      Serial.print(limit_cycle[lim_next_index]);
+      Serial.print("\n next dir     ");
+      Serial.print(next_dir);
+      Serial.print("\n");
+
+  
+  if(potCompare(pot_raw, lim_next_index, limit_cycle, next_dir)){
+    
       switchDirection(motor_dir, relay_pwr_pin, relay_dir_pin, 
                         relay_delay, coast_down);
-      if(lim_next_index == 0 && lim_next_index == 5)
+                        
+                        
+      if(lim_next_index == 0 || lim_next_index == 5){
         next_dir = next_dir * -1;
+        Serial.print("flop next dir \n\n\n");
+      }
       lim_next_index = lim_next_index + next_dir;
   }  
 }
@@ -69,24 +87,32 @@ int speedWrite(int signal_in){
 //  returns true if:
 //   - index mod 2 = 0 AND pot < limit
 //   - index mod 2 = 1 AND pot > limit
-bool potCompare(int pot_reading, int next_index, int limit_cycle[]){
-  if(next_index % 2 == 0 && pot_reading < limit_cycle [next_index])
+bool potCompare(int pot_reading, int next_index, int limit_cycle[], int motor_dir){
+  if(next_index % 2 == 0 && pot_reading < limit_cycle [next_index]){
+        Serial.print("first switch case \n");
     return true;
-  else if(next_index % 2 == 1 && pot_reading > limit_cycle [next_index])
+  }
+  else if(next_index % 2 == 1 && pot_reading > limit_cycle [next_index]){
+        Serial.print("second switch case \n");
     return true;
+  }
   else
     return false;
 }
 
-//Outputs debugging information in the serial window in the following format:
-// Uncomment the following Serial lines of code and open the serial monitor while running to see the raw mic value, the motor speed (smoothedVal), and potentiometer value
-//  mic_raw       motor_spd          POT VALUE  
-void debugSerial(int mic_raw, int smoothedVal, int pot_raw){
-  Serial.print(mic_raw);
-  Serial.print("           ");
-  Serial.print(smoothedVal);
-  Serial.print("           ");
-  Serial.println(pot_raw);
+//Outputs debugging information in the serial window in the following format
+void debugSerial(float var_values[]){
+  //for(int i = 0; i < sizeof(var_values); i++){
+    Serial.print(var_values[0]);
+    Serial.print("\t");
+  //}
+  Serial.print(var_values[1]);
+    Serial.print("\t");
+    Serial.print(var_values[2]);
+    Serial.print("\t");
+    Serial.print(var_values[3]);
+    Serial.print("\t");
+  Serial.print("\n");
 }
 
 //ALTERNATIVE SMOOTHING FUNCTION
@@ -102,8 +128,7 @@ int smooth(int data, float filterVal, float smoothedVal){
 }
 
 //DIGITAL SMOOTHING FUNCTION
-int digitalSmooth(int rawIn, int *sensSmoothArray, 
-int filter_size){     // "int *sensSmoothArray" passes an array to the function - the asterisk indicates the array name is a pointer
+int digitalSmooth(int rawIn, int *sensSmoothArray, int filter_size){     // "int *sensSmoothArray" passes an array to the function - the asterisk indicates the array name is a pointer
   int j, k, temp, top, bottom;
   long total;
   static int i;
@@ -143,11 +168,7 @@ int filter_size){     // "int *sensSmoothArray" passes an array to the function 
   for ( j = bottom; j< top; j++){
     total += sorted[j];  // total remaining indices
     k++; 
-    // Serial.print(sorted[j]); 
-    // Serial.print("   "); 
+ 
   }
-  //  Serial.println();
-  //  Serial.print("average = ");
-  //  Serial.println(total/k);
   return total / k;    // divide by number of samples
 }
