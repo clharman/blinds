@@ -93,20 +93,20 @@ void loop(){
   //
   if (mic_scaled > 0.5)
     sustain = sustain + 10*mic_scaled;
-  motor_spd = sustain * 255*;
+  motor_spd = sustain * 255 / 1024;
   if(sustain > 0)
     sustain--;
   ///////////////////////
   
 
   //Update variables to print here, for convenience [Arrays must have same length]
-  static char* var_names[] = {"pot_raw","mic_raw","mic_smooth","motor_spd","sustain"};
-  static float var_values[] ={ pot_raw,  mic_raw,  mic_smooth,  motor_spd,  sustain };
+  static char* var_names[] = {"next_dir","lim_index",   "lim_next",                  "pot_raw","mic_raw","mic_smooth","motor_spd","sustain"};
+  float var_values[] =       { next_dir,  lim_next_index,limit_cycle[lim_next_index], pot_raw,  mic_raw,  mic_smooth,  motor_spd,  sustain };
   debugSerial(var_names, var_values);
 
   //WRITE throttle
-  analogWrite(motor_pin,150);
-  //analogWrite(motor_pin, motor_spd);
+  //analogWrite(motor_pin,250);
+  analogWrite(motor_pin, motor_spd);
 
   //Change motor direction if appropriate
   directionWrite(pot_raw, lim_next_index, limit_cycle, motor_dir, 

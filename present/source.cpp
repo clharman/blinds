@@ -44,7 +44,7 @@ void switchDirection(bool &motor_dir, int relay_pwr_pin,
 //IF INITIAL CONDITIONS ARE WRONG MECHANISM WILL NOT STOP
 //AT LIMITS AND MAY DAMAGE ITSELF
 void directionWrite(int pot_raw, int &lim_next_index, 
-  int limit_cycle[], bool &motor_dir, int relay_pwr_pin, 
+  int *limit_cycle, bool &motor_dir, int relay_pwr_pin, 
   int relay_dir_pin, int relay_delay, int coast_down, int &next_dir){
   if(potCompare(pot_raw, lim_next_index, limit_cycle)){
     
@@ -52,9 +52,13 @@ void directionWrite(int pot_raw, int &lim_next_index,
                         relay_delay, coast_down);
                         
                         
+      
       if(lim_next_index == 0 || lim_next_index == 5){
-        next_dir = next_dir * -1;
         Serial.print("flop next dir \n\n\n");
+        if(next_dir == 1)
+          next_dir = -1;
+        else
+          next_dir = 1;
       }
       lim_next_index = lim_next_index + next_dir;
   }  
@@ -73,7 +77,7 @@ int speedWrite(int signal_in){
 //  returns true if:
 //   - index mod 2 = 0 AND pot < limit
 //   - index mod 2 = 1 AND pot > limit
-bool potCompare(int pot_reading, int next_index, int limit_cycle[]){
+bool potCompare(int pot_reading, const int next_index, int* limit_cycle){
   if(next_index % 2 == 0 && pot_reading < limit_cycle [next_index]){
         Serial.print("first switch case \n");
     return true;
@@ -89,8 +93,8 @@ bool potCompare(int pot_reading, int next_index, int limit_cycle[]){
 //R  var_names is an array of c-strings containing only & all names of variables held in array of floats var_values
 //M  Serial out
 //E  Prints a line with the name of each variable followed by its value
-void debugSerial(char* var_names[], float var_values[]){
-  for(int i = 0; i < sizeof(var_values); i++){
+void debugSerial(char* var_names[], const float var_values[]){
+  for(int i = 0; i < sizeof(var_values)+2; i++){
     Serial.print(var_names[i]);
     Serial.print("\t");
     Serial.print(var_values[i]);
