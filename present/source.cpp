@@ -54,7 +54,8 @@ void directionWrite(int pot_raw, int &lim_next_index,
                         
       
       if(lim_next_index == 0 || lim_next_index == 5){
-        Serial.print("flop next dir \n\n\n");
+        delay(10);
+        //Serial.print("flop next dir \n\n\n");
         if(next_dir == 1)
           next_dir = -1;
         else
@@ -79,11 +80,11 @@ int speedWrite(int signal_in){
 //   - index mod 2 = 1 AND pot > limit
 bool potCompare(int pot_reading, const int next_index, int* limit_cycle){
   if(next_index % 2 == 0 && pot_reading < limit_cycle [next_index]){
-        Serial.print("first switch case \n");
+        //Serial.print("first switch case \n");
     return true;
   }
   else if(next_index % 2 == 1 && pot_reading > limit_cycle [next_index]){
-        Serial.print("second switch case \n");
+        //Serial.print("second switch case \n");
     return true;
   }
   else
@@ -94,7 +95,7 @@ bool potCompare(int pot_reading, const int next_index, int* limit_cycle){
 //M  Serial out
 //E  Prints a line with the name of each variable followed by its value
 void debugSerial(char* var_names[], const float var_values[]){
-  for(int i = 0; i < sizeof(var_values)+2; i++){
+  for(int i = 0; i < sizeof(var_values)+6; i++){
     Serial.print(var_names[i]);
     Serial.print("\t");
     Serial.print(var_values[i]);

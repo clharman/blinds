@@ -43,7 +43,7 @@ int next_dir = -1;
 //Microphone & signal variables
 int noise_thresh = 150;                   // threshold at which the microphone will begin listening. Ranges from 0 - 1023 - 75 seems to be optimal
 int noise_loud = 500;                    // threshold for really LOUD noise (potentially due to motor, to ignore)
-const int mic_signal_size = 21;          // mic_signal_size should  be an odd number, no smaller than 3
+const int mic_signal_size = 11;          // mic_signal_size should  be an odd number, no smaller than 3
 int mic_signal[mic_signal_size];         // array for holding raw sensor values for sensor1 //////////////////////////////////////////////////////////////////////////////////////
 int mic_raw, mic_smooth;                 // pre- and post-filtering microphone data
 float mic_scaled;                        // scaled from 0 to 1
@@ -58,7 +58,9 @@ const int relay_dir_pin = 10;            // Arduino pin for motor direction rela
 const int coast_down = 1000;             // msecs to allow motor to stop
 const int relay_delay = 10;              // msecs to allow relay action
 
+
 int sustain;
+int silence;
 
 //INIT
 void setup()  { 
@@ -76,6 +78,12 @@ void setup()  {
 //MAIN
 void loop(){
   
+  //Read serial (for calisthenic testing)
+  /*if (Serial.available() > 0) {
+                // read the incoming byte:
+                pot_raw = Serial.parseInt();
+  }*/
+  
   //READ the potentiometer
   pot_raw = analogRead(pot_pin);
   
@@ -83,30 +91,48 @@ void loop(){
   mic_raw = analogRead(mic_pin);
   
   //Smooth mic signal
-  mic_smooth = digitalSmooth(mic_raw, mic_signal, mic_signal_size) / 1024;  // *every sensor you use with digitalSmooth needs its own array
-  mic_scaled = mic_smooth * 256 / 1024;
+  mic_smooth = digitalSmooth(mic_raw, mic_signal, mic_signal_size);  // *every sensor you use with digitalSmooth needs its own array
+  mic_scaled = abs(mic_smooth * 256 / 750);
    
   /////////////////////////
   //AREA TO IMPROVE
   //need to be working with an array here, not a single value
   //also need to be passing the motor a smooth value
   //
-  if (mic_scaled > 0.5)
-    sustain = sustain + 10*mic_scaled;
-  motor_spd = sustain * 255 / 1024;
-  if(sustain > 0)
-    sustain--;
+  if (mic_scaled > 10)
+    sustain = sustain + mic_scaled/9;
+  motor_spd = (sustain*(sustain>6) +(sustain>10)*6)*((lim_next_index == 1)+1) ;
+  if(sustain >1)
+    sustain = sustain - 1;
+    
+  if(sustain > 800)
+    sustain = 0;
   ///////////////////////
+  
+  if(motor_spd == 0)
+    silence = silence + 1;
+  if(motor_spd > 0)
+    silence = 0;
+  if(silence > 4000)
+    sustain = 140;
+    
+  Serial.print(mic_smooth);
+  Serial.print("\t");
+  Serial.print(sustain);
+  Serial.print("\t");
+  Serial.print(motor_spd);
+  Serial.print("\n");
   
 
   //Update variables to print here, for convenience [Arrays must have same length]
-  static char* var_names[] = {"next_dir","lim_index",   "lim_next",                  "pot_raw","mic_raw","mic_smooth","motor_spd","sustain"};
-  float var_values[] =       { next_dir,  lim_next_index,limit_cycle[lim_next_index], pot_raw,  mic_raw,  mic_smooth,  motor_spd,  sustain };
-  debugSerial(var_names, var_values);
+  //static char* var_names[] = {"next_dir","lim_index",   "lim_next",                  "pot_raw","mic_smooth","motor_spd","sustain","mic_scaled"};
+  //float var_values[] =       { next_dir,  lim_next_index,limit_cycle[lim_next_index], pot_raw,  mic_smooth,  motor_spd,  sustain , mic_scaled};
+  //debugSerial(var_names, var_values);
+  delay(5);
 
   //WRITE throttle
   //analogWrite(motor_pin,250);
-  analogWrite(motor_pin, motor_spd);
+  analogWrite(motor_pin, 30);
 
   //Change motor direction if appropriate
   directionWrite(pot_raw, lim_next_index, limit_cycle, motor_dir, 
