@@ -24,25 +24,31 @@
 //All pin variables should be const
 //Potentiometer variables
 const int pot_pin = 0;                  // Arduino pin for potentiometer input                                     
-const int lim_ccw = 140;                // point at which the blinds change direction from clockwise to anticlockwise. Ranges from 0 - 1023
-const int lim_cw = 850;                 // point at which the blinds change direction from anticlockwise to clockwise
+const int lim_ccw = 145;                // point at which the blinds change direction from clockwise to anticlockwise. Ranges from 0 - 1023
+const int lim_cw = 845;                 // point at which the blinds change direction from anticlockwise to clockwise
 int pot_raw = 0;                        // potentiometer value storage
-int shim_ccw_out = 275;                 // outside edge of clockwise shimmer threshold
-int shim_ccw_in = 325;                  // inside edge of clockwise shimmer threshold
-int shim_cw_out = 725;                  // outside edge of counterclockwise shimmer threshold
-int shim_cw_in = 675;                   // inside edge of counterclockwise shimmer threshold
+int shim_ccw_out = 295;                 // outside edge of clockwise shimmer threshold
+int shim_ccw_in = 305;                  // inside edge of clockwise shimmer threshold
+int shim_cw_out = 705;                  // outside edge of counterclockwise shimmer threshold
+int shim_cw_in = 695;                   // inside edge of counterclockwise shimmer threshold
 
 //changes direction at each array level and proceeds to the next
 int limit_cycle[] = {lim_ccw, shim_ccw_in, shim_ccw_out, shim_cw_out, shim_cw_in, lim_cw};
+
 
 //"INITIAL CONDITIONS"
 int lim_next_index = 0;
 bool motor_dir = false;                // direction of motor (true = clockwise) & initial direction
 int next_dir = -1;
+int mode = 1;                            //mode may be 1,2,3
 
 //Microphone & signal variables
 int noise_thresh = 150;                   // threshold at which the microphone will begin listening. Ranges from 0 - 1023 - 75 seems to be optimal
-int noise_loud = 500;                    // threshold for really LOUD noise (potentially due to motor, to ignore)
+int noise_loud = 200;                    // threshold for really LOUD noise (potentially due to motor, to ignore)
+int noise_soft = 100;
+float noise_ambient = 0;
+double noise_input = 0;
+float noise_motor = 0;
 const int mic_signal_size = 11;          // mic_signal_size should  be an odd number, no smaller than 3
 int mic_signal[mic_signal_size];         // array for holding raw sensor values for sensor1 //////////////////////////////////////////////////////////////////////////////////////
 int mic_raw, mic_smooth;                 // pre- and post-filtering microphone data
@@ -77,13 +83,8 @@ void setup()  {
 
 //MAIN
 void loop(){
-  
-  //Read serial (for calisthenic testing)
-  /*if (Serial.available() > 0) {
-                // read the incoming byte:
-                pot_raw = Serial.parseInt();
-  }*/
-  
+
+  //INPUT PROCESSING
   //READ the potentiometer
   pot_raw = analogRead(pot_pin);
   
@@ -92,31 +93,55 @@ void loop(){
   
   //Smooth mic signal
   mic_smooth = digitalSmooth(mic_raw, mic_signal, mic_signal_size);  // *every sensor you use with digitalSmooth needs its own array
-  mic_scaled = abs(mic_smooth * 256 / 750);
-   
-  /////////////////////////
-  //AREA TO IMPROVE
-  //need to be working with an array here, not a single value
-  //also need to be passing the motor a smooth value
-  //
-  if (mic_scaled > 10)
-    sustain = sustain + mic_scaled/9;
-  motor_spd = (sustain*(sustain>6) +(sustain>10)*6)*((lim_next_index == 1)+1) ;
-  if(sustain >1)
+  //Apply motor noise model
+  noise_motor = 260 * log(motor_spd) - 615;
+  //Apply ambient noise model
+  noise_ambient = 0;
+  //Apply input noise model
+  noise_input = 10 * log(pow(10,(mic_smooth/10)) - pow(10,(noise_motor/10)) - pow(10,(noise_ambient/10))) / log(10);
+  ////////////////
+  
+  if(mode == 1){//Motion ~ sound
+
+    if (noise_input > noise_soft)
+      sustain = sustain + noise_input;
+    motor_spd = sustain/8 + (sustain > 10)*20;
+    
+    
+    
+    if(noise_input > noise_loud || sustain > 100){
+      mode = 2;
+      sustain = 0;
+    }
+  }
+  else if(mode == 2){//Motion ~ silence
+    if(noise_input < noise_soft)
+      sustain = sustain + (noise_soft - noise_input);
+    else if(noise_input > noise_loud)
+      sustain = 0;
+      
+    motor_spd = sustain/8 + (sustain > 10)*20;
+    
+    
+    if(sustain > 100){
+      mode = 3;
+      sustain = 0;
+    }
+  }
+  else if(mode == 3){//Slow coast down
+    if(motor_spd > 0){
+      motor_spd = motor_spd - 1;
+      delay(10);
+    }
+    else
+      mode = 1;
+  }
+
+  if(sustain > 0)
     sustain = sustain - 1;
     
-  if(sustain > 800)
-    sustain = 0;
-  ///////////////////////
-  
-  if(motor_spd == 0)
-    silence = silence + 1;
-  if(motor_spd > 0)
-    silence = 0;
-  if(silence > 4000)
-    sustain = 140;
     
-  Serial.print(mic_smooth);
+  Serial.print(noise_input);
   Serial.print("\t");
   Serial.print(sustain);
   Serial.print("\t");
@@ -128,11 +153,11 @@ void loop(){
   //static char* var_names[] = {"next_dir","lim_index",   "lim_next",                  "pot_raw","mic_smooth","motor_spd","sustain","mic_scaled"};
   //float var_values[] =       { next_dir,  lim_next_index,limit_cycle[lim_next_index], pot_raw,  mic_smooth,  motor_spd,  sustain , mic_scaled};
   //debugSerial(var_names, var_values);
-  delay(5);
+  delay(2);
 
   //WRITE throttle
   //analogWrite(motor_pin,250);
-  analogWrite(motor_pin, 30);
+  analogWrite(motor_pin, 200);
 
   //Change motor direction if appropriate
   directionWrite(pot_raw, lim_next_index, limit_cycle, motor_dir, 
