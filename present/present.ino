@@ -44,8 +44,8 @@ int mode = 1;                            //mode may be 1,2,3
 
 //Microphone & signal variables
 int noise_thresh = 150;                   // threshold at which the microphone will begin listening. Ranges from 0 - 1023 - 75 seems to be optimal
-int noise_loud = 200;                    // threshold for really LOUD noise (potentially due to motor, to ignore)
-int noise_soft = 100;
+int noise_loud = 70;                    // threshold for really LOUD noise (potentially due to motor, to ignore)
+int noise_soft = 15;
 float noise_ambient = 0;
 double noise_input = 0;
 float noise_motor = 0;
@@ -67,6 +67,8 @@ const int relay_delay = 10;              // msecs to allow relay action
 
 int sustain;
 int silence;
+
+float exponent = 0;
 
 //INIT
 void setup()  { 
@@ -94,44 +96,53 @@ void loop(){
   //Smooth mic signal
   mic_smooth = digitalSmooth(mic_raw, mic_signal, mic_signal_size);  // *every sensor you use with digitalSmooth needs its own array
   //Apply motor noise model
-  noise_motor = 260 * log(motor_spd) - 615;
+  exponent = -0.012 * motor_spd;
+  noise_motor = 820*(1-pow(2.718, exponent));
   //Apply ambient noise model
   noise_ambient = 0;
   //Apply input noise model
-  noise_input = 10 * log(pow(10,(mic_smooth/10)) - pow(10,(noise_motor/10)) - pow(10,(noise_ambient/10))) / log(10);
+  
+  
+  if(pow(10,(mic_smooth/10)) - pow(10,(noise_motor/10)) - pow(10,(noise_ambient/10)) > 0)
+    noise_input = 10 * log(pow(10,(mic_smooth/10)) - pow(10,(noise_motor/10)) - pow(10,(noise_ambient/10))) / log(10);
+  else
+    noise_input = 0;
   ////////////////
   
   if(mode == 1){//Motion ~ sound
 
-    if (noise_input > noise_soft)
-      sustain = sustain + noise_input;
-    motor_spd = sustain/8 + (sustain > 10)*20;
+    if (noise_input > noise_soft){
+      sustain = sustain + noise_input/9;
+      silence = 0;
+    }
+    motor_spd = (sustain > 28)*20;
+    
+    if (noise_input < noise_soft)
+      silence = silence + 1;
     
     
-    
-    if(noise_input > noise_loud || sustain > 100){
+    if(sustain > 800 || silence > 2000){
       mode = 2;
       sustain = 0;
     }
   }
   else if(mode == 2){//Motion ~ silence
     if(noise_input < noise_soft)
-      sustain = sustain + (noise_soft - noise_input);
-    else if(noise_input > noise_loud)
+      sustain = sustain + 2;
+    else if(noise_input > noise_soft)
       sustain = 0;
       
-    motor_spd = sustain/8 + (sustain > 10)*20;
+    motor_spd = (sustain > 200)*50;
     
     
-    if(sustain > 100){
+    if(sustain > 2400){
       mode = 3;
       sustain = 0;
     }
   }
-  else if(mode == 3){//Slow coast down
-    if(motor_spd > 0){
+  else{//Slow coast down
+    if(motor_spd > 5){
       motor_spd = motor_spd - 1;
-      delay(10);
     }
     else
       mode = 1;
@@ -141,23 +152,25 @@ void loop(){
     sustain = sustain - 1;
     
     
-  Serial.print(noise_input);
+
+  Serial.print(mode);
   Serial.print("\t");
   Serial.print(sustain);
   Serial.print("\t");
-  Serial.print(motor_spd);
+  Serial.print(noise_input);
   Serial.print("\n");
+
   
 
   //Update variables to print here, for convenience [Arrays must have same length]
   //static char* var_names[] = {"next_dir","lim_index",   "lim_next",                  "pot_raw","mic_smooth","motor_spd","sustain","mic_scaled"};
   //float var_values[] =       { next_dir,  lim_next_index,limit_cycle[lim_next_index], pot_raw,  mic_smooth,  motor_spd,  sustain , mic_scaled};
   //debugSerial(var_names, var_values);
-  delay(2);
+  delay(5);
 
   //WRITE throttle
   //analogWrite(motor_pin,250);
-  analogWrite(motor_pin, 200);
+  analogWrite(motor_pin, motor_spd);
 
   //Change motor direction if appropriate
   directionWrite(pot_raw, lim_next_index, limit_cycle, motor_dir, 
