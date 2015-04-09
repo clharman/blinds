@@ -7,12 +7,19 @@
 //  -Ignored noise input at high motor speeds (because of loud motor)
 //  [Conor Barry  04/30/14]
 //
-//Revisited and redone
+//Revisited and recreated
 //  -Restructured to use main, source, and header files, with complete documentation
 //  -Added limit cycling (numerous direction changes at various points)
 //  -Reworked filtering system
 //  -Added sustain function to prolong response to short input
-//  -Added 'mode change' functionality (can switch between behavior
+//  -Added 'mode change' functionality (can switch between behaviors)
+//  -Removed feedback noise created by motor using motor noise model
+//  -Implemented mode cycle:
+//    1. Respond to sound until either lots of sound or prolonged silence
+//    2. Respond to silence until either lots of sound or prolonged silence
+//    3. Coast down and return to 1.
+//   (4.) Enter sleep mode after extremely long silence until any noise
+//  -Removed ambient noise using extra-low-pass filter
 //  [Colin Harman 01/27/15]
 //
 //Blinds project for Jim Cogswell, http://www.jimcogswell.com/
@@ -41,11 +48,12 @@ int lim_next_index = 0;
 bool motor_dir = false;                // direction of motor (true = clockwise) & initial direction
 int next_dir = -1;
 int mode = 1;                            //mode may be 1,2,3
+long sleep = 30000;
 
 //Microphone & signal variables
 int noise_thresh = 150;                   // threshold at which the microphone will begin listening. Ranges from 0 - 1023 - 75 seems to be optimal
 int noise_loud = 70;                    // threshold for really LOUD noise (potentially due to motor, to ignore)
-int noise_soft = 15;
+int noise_soft = 10;
 float noise_ambient = 0;
 double noise_input = 0;
 float noise_motor = 0;
@@ -110,34 +118,46 @@ void loop(){
   ////////////////
   
   if(mode == 1){//Motion ~ sound
-
+    
     if (noise_input > noise_soft){
-      sustain = sustain + noise_input/9;
+      sustain = sustain + noise_input/8;
       silence = 0;
     }
+    
+    
     motor_spd = (sustain > 28)*20;
     
-    if (noise_input < noise_soft)
+    if (noise_input < noise_soft){
       silence = silence + 1;
+    }
     
     
-    if(sustain > 800 || silence > 2000){
+    if(sustain > 1800 || silence > 2000){
       mode = 2;
       sustain = 0;
     }
   }
   else if(mode == 2){//Motion ~ silence
-    if(noise_input < noise_soft)
+    if(noise_input < noise_soft){
       sustain = sustain + 2;
-    else if(noise_input > noise_soft)
+      silence = silence + 1;
+      if(sleep < 2900)
+        sleep = sleep + 1;
+    }
+    else if(noise_input > noise_soft){
       sustain = 0;
-      
-    motor_spd = (sustain > 200)*50;
+      silence = 0;
+      sleep = 0;
+    }
     
-    
-    if(sustain > 2400){
-      mode = 3;
-      sustain = 0;
+    if(sleep > 2800)
+      motor_spd = 0;
+    else{
+      motor_spd = (sustain > 200)*50;
+      if(sustain > 2400){
+        mode = 3;
+        sustain = 0;
+      }
     }
   }
   else{//Slow coast down
@@ -153,12 +173,12 @@ void loop(){
     
     
 
+  /*Serial.print(sleep);
+  Serial.print("\t");
   Serial.print(mode);
-  Serial.print("\t");
-  Serial.print(sustain);
-  Serial.print("\t");
+  /*Serial.print("\t");
   Serial.print(noise_input);
-  Serial.print("\n");
+  Serial.print("\n");*/
 
   
 
@@ -169,7 +189,6 @@ void loop(){
   delay(5);
 
   //WRITE throttle
-  //analogWrite(motor_pin,250);
   analogWrite(motor_pin, motor_spd);
 
   //Change motor direction if appropriate
